@@ -1,31 +1,46 @@
-terraform {
-  required_version = ">= 1.5.0"
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
+resource "aws_vpc" "main" {
+  cidr_block = "10.0.0.0/16"
+  tags = {
+    Name = "main-vpc"
   }
 }
 
-provider "aws" {
-  region = "us-east-1"
+resource "aws_subnet" "main" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.1.0/24"
+  availability_zone = "us-east-1a"
+  tags = {
+    Name = "main-subnet"
+  }
 }
 
-resource "aws_instance" "example" {
-  ami           = "ami-01edba92f9036f76e" # Amazon Linux 2 AMI (us-east-1)
-  instance_type = "t3.small"
+resource "aws_security_group" "main" {
+  name        = "main-sg"
+  description = "Main security group"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_instance" "main" {
+  ami           = "ami-01edba92f9036f76e" # Amazon Linux 2 AMI
+  instance_type = "t2.micro"
+  subnet_id     = aws_subnet.main.id
+  security_groups = [aws_security_group.main.name]
 
   tags = {
-    Name = "terraform-ec2"
+    Name = "main-instance"
   }
-}
-
-output "instance_id" {
-  value = aws_instance.example.id
-}
-
-output "public_ip" {
-  value = aws_instance.example.public_ip
 }
